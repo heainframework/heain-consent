@@ -39,6 +39,7 @@ type fake struct {
 	apps     map[string]*fakeApp // app.instance
 	messages []map[string]any
 	audits   []string
+	traces   []string
 	key      *ecdsa.PrivateKey
 }
 
@@ -155,8 +156,9 @@ func (f *fake) Call(_ context.Context, cs heain.CallSpec) (int, error) {
 
 func (f *fake) SignDigest(d []byte) ([]byte, error) { return f.key.Sign(rand.Reader, d, crypto.SHA256) }
 func (f *fake) CertDER() []byte                     { return []byte("cert") }
-func (f *fake) Audit(_ context.Context, c, o string, _ map[string]any) error {
+func (f *fake) Audit(ctx context.Context, c, o string, d map[string]any) error {
 	f.mu.Lock()
+	f.traces = append(f.traces, heain.TraceID(ctx)+"|"+fmt.Sprint(d["cause_trace"]))
 	f.audits = append(f.audits, c+":"+o)
 	f.mu.Unlock()
 	return nil
@@ -533,5 +535,16 @@ func TestDPOAndDeadlines(t *testing.T) {
 	f.mu.Unlock()
 	if n != 3 { // received, due soon, overdue
 		t.Fatalf("messages about r4: %d", n)
+	}
+}
+
+// An engine event made during a served call gets its own trace: the call
+// already has exactly one formal record (spec 05 C5).
+func TestAuditOwnTrace(t *testing.T) {
+	e, f, _, _ := setup(t)
+	e.audit(heain.WithTrace(context.Background(), "req-trace", ""), "consent.record", "given", nil)
+	tr, cause, _ := strings.Cut(f.traces[len(f.traces)-1], "|")
+	if tr == "" || tr == "req-trace" || cause != "req-trace" {
+		t.Fatalf("trace %q cause %q", tr, cause)
 	}
 }

@@ -139,6 +139,15 @@ func (e *Engine) wake() {
 }
 
 func (e *Engine) audit(ctx context.Context, cap, outcome string, d map[string]any) {
+	// its own trace: a served call already has exactly one formal record
+	// (spec 05 C5); the request's trace is kept as cause_trace
+	if d == nil {
+		d = map[string]any{}
+	}
+	if t := heain.TraceID(ctx); t != "" {
+		d["cause_trace"] = t
+	}
+	ctx = heain.WithTrace(ctx, heain.NewID(), "")
 	if err := e.Plat.Audit(ctx, cap, outcome, d); err != nil {
 		e.Logf("heain-consent: audit %s %s: %v", cap, outcome, err)
 	}
