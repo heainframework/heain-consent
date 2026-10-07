@@ -1,0 +1,26 @@
+# heain-consent under the heain conformance suite (heain-sdk conformance/). The suite's probe app is an admin and
+# recorder caller: it submits a purpose (which waits for P5 there) and registers a person; the person-only endpoints
+# refuse an app. scripts/live_4_6d.sh runs consent and requests end to end with heain-gateway, heain-notify and crm-demo.
+manifest: heain-app.yaml
+build: [go, build, -o, heain-consent, ./cmd/heain-consent]
+start: [./heain-consent, -admin-callers, conformance-probe, -recorder-callers, conformance-probe]
+port: 19540
+endpoints:
+  - {method: PUT, path: /v1/purposes/conf-p, body: {title: Conformance, notice: conformance-secret-notice, lawful_basis: consent}, expect: 202, secret: conformance-secret-notice}
+  - {method: GET, path: /v1/purposes, expect: 200}
+  - {method: GET, path: /v1/purposes/conf-p, expect: 200}
+  - {method: POST, path: /v1/subjects, body: {identifiers: [{kind: email, value: conformance-secret@example.test}]}, expect: 200, secret: conformance-secret@example.test}
+  - {method: GET, path: /v1/subjects/unknown, expect: 404}
+  - {method: PUT, path: /v1/subjects/unknown/consents/conf-none, body: {given: true, version: 1, evidence: form-1}, expect: 404}
+  - {method: POST, path: /v1/subjects/unknown/requests, body: {type: access}, expect: 404}
+  - {method: POST, path: /v1/check, body: {purpose: conf-p, identifiers: [{kind: email, value: conformance-secret@example.test}]}, expect: 404}
+  - {method: GET, path: /v1/me, expect: 403}
+  - {method: PUT, path: /v1/me/consents/conf-p, body: {given: true, version: 1}, expect: 403}
+  - {method: POST, path: /v1/me/requests, body: {type: access}, expect: 403}
+  - {method: GET, path: /v1/me/requests/unknown, expect: 403}
+  - {method: GET, path: /v1/me/requests/unknown/export, expect: 403}
+  - {method: GET, path: /v1/requests, expect: 200}
+  - {method: GET, path: /v1/requests/unknown, expect: 404}
+  - {method: POST, path: /v1/requests/unknown/verify, body: {verified: true}, expect: 404}
+  - {method: POST, path: /v1/requests/unknown/complete, body: {note: done}, expect: 404}
+  - {method: GET, path: /v1/requests/unknown/export, expect: 404}

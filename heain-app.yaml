@@ -1,0 +1,49 @@
+# heain-consent v1 (Step 4.6d, 2026-10-07): PDPA consent and data-subject requests.
+# Purposes (versioned, with the notice people read) are activated through P5. People give and withdraw consent
+# through heain-gateway, or an app records it for them; apps ask before processing (/v1/check). Requests
+# (access, portability, erasure, rectification, restriction, objection) are verified by a DPO; access and
+# portability collect a signed export from every app that declares subject.rights; erasure goes through P5,
+# and what retention or a legal hold keeps goes through RETENTION_OVERRIDE. The 30-day deadline is followed,
+# with reminders through heain-notify. People, requests and exports are sealed, each under its own key.
+manifest_version: 1
+app:
+  id: heain-consent
+  version: 1.0.0
+  group: base
+  description: Consent records and data-subject requests (PDPA) -- purposes through P5, consent checks, and access, portability and erasure carried out in every app.
+  api: v1
+  sdk: {name: heain-sdk-go, version: ">=1.0.0"}
+capabilities:
+  - {name: consent.purpose, version: 1, formal: true, execution: direct, ai: {used: false}}
+  - {name: consent.record, version: 1, formal: true, execution: direct, ai: {used: false}, data_classes: [consent_data]}
+  - {name: consent.check, version: 1, formal: false, execution: direct, ai: {used: false}, data_classes: [consent_data]}
+  - {name: consent.request, version: 1, formal: true, execution: direct, ai: {used: false}, data_classes: [consent_data]}
+  - {name: consent.dpo, version: 1, formal: true, execution: direct, ai: {used: false}, data_classes: [consent_data]}
+endpoints:
+  - {method: PUT, path: "/v1/purposes/{id}", capability: consent.purpose, formal: true, public: true}
+  - {method: GET, path: /v1/purposes, capability: consent.purpose, formal: false, public: true}
+  - {method: GET, path: "/v1/purposes/{id}", capability: consent.purpose, formal: false, public: true}
+  - {method: GET, path: /v1/me, capability: consent.record, formal: true, public: true}
+  - {method: PUT, path: "/v1/me/consents/{purpose}", capability: consent.record, formal: true, public: true}
+  - {method: POST, path: /v1/me/requests, capability: consent.request, formal: true, public: true}
+  - {method: GET, path: "/v1/me/requests/{id}", capability: consent.request, formal: true, public: true}
+  - {method: GET, path: "/v1/me/requests/{id}/export", capability: consent.request, formal: true, public: true}
+  - {method: POST, path: /v1/subjects, capability: consent.record, formal: true, public: true}
+  - {method: GET, path: "/v1/subjects/{id}", capability: consent.dpo, formal: true, public: true}
+  - {method: PUT, path: "/v1/subjects/{id}/consents/{purpose}", capability: consent.record, formal: true, public: true}
+  - {method: POST, path: "/v1/subjects/{id}/requests", capability: consent.request, formal: true, public: true}
+  - {method: POST, path: /v1/check, capability: consent.check, formal: false}
+  - {method: GET, path: /v1/requests, capability: consent.dpo, formal: true, public: true}
+  - {method: GET, path: "/v1/requests/{id}", capability: consent.dpo, formal: true, public: true}
+  - {method: POST, path: "/v1/requests/{id}/verify", capability: consent.dpo, formal: true, public: true}
+  - {method: POST, path: "/v1/requests/{id}/complete", capability: consent.dpo, formal: true, public: true}
+  - {method: GET, path: "/v1/requests/{id}/export", capability: consent.dpo, formal: true, public: true}
+uses:
+  - {app: heain-notify, capabilities: [notify.send]}
+  # every app that holds personal data and declares the shared capability subject.rights
+  - {app: "*", capabilities: [subject.rights]}
+data_classes:
+  - {name: consent_data, sovereignty: node-local, encrypted_at_rest: true, crypto_shred: true}
+offline:
+  allowed: [consent.check, consent.record]
+  journal: none

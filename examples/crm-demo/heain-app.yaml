@@ -1,0 +1,21 @@
+# crm-demo: an example app that holds personal data and declares subject.rights, so heain-consent can carry out
+# access, portability and erasure requests in it. Invoices are kept by law (a retention floor): erasing them needs
+# an approved RETENTION_OVERRIDE. TEST ONLY: its data lives in memory.
+manifest_version: 1
+app:
+  id: crm-demo
+  version: 1.0.0
+  group: domain
+  description: Example CRM for heain-consent (subject.rights).
+  api: v1
+  sdk: {name: heain-sdk-go, version: ">=1.0.0"}
+capabilities:
+  - {name: crm.customers, version: 1, formal: true, execution: direct, ai: {used: false}, data_classes: [crm_customer]}
+  - {name: subject.rights, version: 1, formal: true, execution: direct, ai: {used: false}, data_classes: [crm_customer]}
+endpoints:
+  - {method: POST, path: /v1/customers, capability: crm.customers, formal: true}
+  - {method: GET, path: /v1/customers, capability: crm.customers, formal: false}
+  - {method: POST, path: /v1/subject-rights/export, capability: subject.rights, formal: true}
+  - {method: POST, path: /v1/subject-rights/erase, capability: subject.rights, formal: true}
+data_classes:
+  - {name: crm_customer, sovereignty: node-local, encrypted_at_rest: true, crypto_shred: true, retention: {min: 1825d}}
